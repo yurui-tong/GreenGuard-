@@ -35,12 +35,19 @@ class Ekal_fil:
         """
         Time Update: Projects the state ahead by dt
         """
+        self.kf.F[0, 3] = self._vx/self._omega * (np.cos(self._psi + self._omega* dt)- np.cos(self._psi))
+        self.kf.F[1, 4] = self._vy/self._omega (np.sin(self._psi)- np.sin(self._psi + self._omega *dt))
+        self.kf.F[2, 5] = dt     
+        # Read the current state before changing it.
+        x_old = self.kf.x.copy()
 
+        # Evaluate both using that same state.
+        J = self.motion_jacobian(x_old, dt)
+        x_next = self.motion_model(x_old, dt)
 
-        self.kf.F[0, 3] = self._vx/self._omega * (np.sin(self._psi + self._omega* dt)- np.sin(self._psi))
-        self.kf.F[1, 4] = self._vy/self._omega (np.cos(self._psi)- np.cos(self._psi + self._omega *dt))
-        self.kf.F[2, 5] = self._omega*dt     
-        self.kf.predict()
+        # Predict uncertainty and state.
+        self.kf.P = J @ self.kf.P @ J.T + self.kf.Q
+        self.kf.x = x_next
 
     def update_heading(self, yaw):
         """
