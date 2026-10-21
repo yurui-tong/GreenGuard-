@@ -1,13 +1,18 @@
 import numpy as np
 
-class kal_fil:
+class Ekal_fil:
     def __init__(self):
         from filterpy.kalman import KalmanFilter
         # State: [x, y, yaw, vx, vy, vyaw]
         # We set dim_z=3 initially, but we will change it dynamically
         self.kf = KalmanFilter(dim_x=6, dim_z=3)
         self.kf.F = np.eye(6)
-       
+        self._x= self.kf.x[0]
+        self._y= self.kf.x[1]
+        self._psi=self.kf.x[2]
+        self._vx= self.kf.x[3]
+        self._vy= self.kf.x[4]
+        self._omega= self.kf.x[5]
         # H for updating Position (x,y) - Maps state to [x, y]
         # Shape: (2, 6)
         self.H_pos = np.array([
@@ -26,13 +31,15 @@ class kal_fil:
         self.R_pos = np.diag([0.5, 0.5])   # GPS Noise (meters)
         self.R_yaw = np.array([[0.05]])    # IMU Noise (radians)
 
-    def predict(self, dt):
+    def predict(self, dt): # inspired by https://github.com/Janudis/Extended-Kalman-Filter-GPS_IMU
         """
         Time Update: Projects the state ahead by dt
         """
-        self.kf.F[0, 3] = dt
-        self.kf.F[1, 4] = dt
-        self.kf.F[2, 5] = dt    
+
+
+        self.kf.F[0, 3] = self._vx/self._omega * (np.sin(self._psi + self._omega* dt)- np.sin(self._psi))
+        self.kf.F[1, 4] = self._vy/self._omega (np.cos(self._psi)- np.cos(self._psi + self._omega *dt))
+        self.kf.F[2, 5] = self._omega*dt     
         self.kf.predict()
 
     def update_heading(self, yaw):
