@@ -30,14 +30,22 @@ class Ekal_fil:
         # Measurement noise
         self.R_pos = np.diag([0.5, 0.5])   # GPS Noise (meters)
         self.R_yaw = np.array([[0.05]])    # IMU Noise (radians)
+        
+    def motion_model(self, dt):
+        return np.array([[self._x+self._vx/self._omega * (np.cos(self._psi + self._omega* dt)- np.cos(self._psi))],
+                         [self._y+ self._vy/self._omega (np.sin(self._psi)- np.sin(self._psi + self._omega *dt))],
+                         [self._psi+ self._omega*dt ],
+                         [self._vx],
+                         [self._vy],
+                         [self._omega]])
+        
+    def motion_jacobian(self, dt):
+        pass
 
     def predict(self, dt): # inspired by https://github.com/Janudis/Extended-Kalman-Filter-GPS_IMU
         """
         Time Update: Projects the state ahead by dt
-        """
-        self.kf.F[0, 3] = self._vx/self._omega * (np.cos(self._psi + self._omega* dt)- np.cos(self._psi))
-        self.kf.F[1, 4] = self._vy/self._omega (np.sin(self._psi)- np.sin(self._psi + self._omega *dt))
-        self.kf.F[2, 5] = dt     
+        """  
         # Read the current state before changing it.
         x_old = self.kf.x.copy()
 
