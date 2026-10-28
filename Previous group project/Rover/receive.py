@@ -4,7 +4,7 @@ from digi.xbee.devices import XBeeDevice
 class Corr_receive:
     def __init__(self,PORT="COM4",BAUD_RATE=115200):
         self.device= XBeeDevice(PORT, BAUD_RATE)
-        self.last_message = "0,0,0"
+        self.last_message = None
         self.open()
         print('Corr_receive is a Great Success')
 
@@ -22,13 +22,20 @@ class Corr_receive:
     def close(self): 
         if self.device.is_open(): 
             self.device.close()
+            
+            
+    def get_message(self, timeout=0.0, max_age=1.0):
+        start = time.monotonic()
+        while True:
+            packet = self.last_message
+            now = time.monotonic()
+            if packet is not None:
+                message, received_at = packet
 
-    def get_message(self,timeout=0.05):
-        start = time.time()
-        initial = self.last_message
+                if now - received_at <= max_age:
+                    return message
 
-        while time.time() - start < timeout:
-            if self.last_message != initial:
-                return self.last_message
+            if now - start >= timeout:
+                return None
+
             time.sleep(0.001)
-        return initial

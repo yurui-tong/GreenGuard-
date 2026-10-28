@@ -44,19 +44,29 @@ class GPS_rover:
             return latest_valid_data
         else:
             return None
-
-
+        
+        
     def collect_gps_samples(self, duration_sec=60):
         data_list = []
-        start_time = time.time()
+        deadline = time.monotonic() + duration_sec
+
         print(f"Collecting baseline GPS for {duration_sec}s...")
-        while time.time() - start_time < duration_sec:
-            while self.stream.in_waiting == 0:
-                time.sleep(0.01)
+
+        while time.monotonic() < deadline:
             data = self.get_GPS()
-            if data:
+
+            if data is not None:
                 data_list.append(data)
+            else:
+                time.sleep(0.01)
+
+        if not data_list:
+            raise RuntimeError("No GPS samples received. Check the GPS connection.")
+
         return data_list
+
+
+
 
     def average_gps(self, data_list):
         lats = [d["lat"] for d in data_list]

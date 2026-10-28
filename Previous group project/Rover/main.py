@@ -31,8 +31,10 @@ print(f"Rover baseline set: {GPS_rover_zero}")
 # GPS correction baseline
 timeout_cor_base = 5.0
 print(f"Waiting up to {timeout_cor_base}s for correction baseline...")
-msg = Corr_receive_base.get_message(timeout=timeout_cor_base)           
-cor_base =np.fromstring(msg, sep=',')
+msg = Corr_receive_base.get_message(timeout=timeout_cor_base)
+if msg is None:
+    raise RuntimeError("No base correction received during startup.")
+cor_base = np.fromstring(msg, sep=',')
 print(f"Correction baseline set: {cor_base}")
 
 ## Create data storage lists
@@ -68,28 +70,28 @@ try:
 
         if gps_data is not None:
             # Get Correction
-            try:
-                msg = Corr_receive_base.get_message(timeout=0.01)
-                cor = np.fromstring(msg, sep=',')
-            except Exception:
-                if len(cor_list) > 0:
-                    cor = cor_list[-1]
+            msg = Corr_receive_base.get_message(max_age=1.0)
+
+            if msg is None:
+                cor = np.zeros(3)
+            else:
+                values = np.fromstring(msg, sep=",")
+
+                if values.size == 3 and np.all(np.isfinite(values)):
+                    cor = values - cor_base
                 else:
-                    cor = np.array([0.0, 0.0, 0.0])
-            print("Correction Received:", cor)
-            cor -= cor_base
-            print("Correction Received:", cor)
+                    cor = np.zeros(3)
 
             # Convert to Local ENU
             GPS_x, GPS_y, _ = pm.geodetic2enu(
                 gps_data['lat'], gps_data['lon'], gps_data['height'],
                 GPS_rover_zero['lat'], GPS_rover_zero['lon'], GPS_rover_zero['height']
             )
-            print("Rover GPS Position:", GPS_x, GPS_y)
+            #print("Rover GPS Position:", GPS_x, GPS_y)
             # Convert to Local ENU
             rover_x = GPS_x - cor[0]
             rover_y = GPS_y - cor[1]
-            print("Rover GPS Position with Correction:", rover_x, rover_y)
+            #print("Rover GPS Position with Correction:", rover_x, rover_y)
 
             # Apply Kalman Filter Update with GPS and Correction
             kf.update_position(rover_x, rover_y)
